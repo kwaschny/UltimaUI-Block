@@ -1,585 +1,591 @@
 /* globals jQuery, UltimaBlock */
-'use strict';
+(function () {
 
-if (!window.UltimaBlock) {
+	'use strict';
 
-	// BEGIN: check dependencies
+	if (!window.UltimaBlock) {
 
-		if (jQuery === undefined) {
+		// BEGIN: check dependencies
 
-			throw new Error('jQuery missing for UltimaBlock');
-		}
+			if (jQuery === undefined) {
 
-		// feature detection
-		if (!jQuery.isPlainObject) {
-
-			throw new Error('jQuery 1.4+ required for UltimaBlock');
-		}
-
-	// END: check dependencies
-
-	window.UltimaBlock = function(target, options) {
-
-		// prevent skipping the constructor
-		if (!(this instanceof UltimaBlock)) {
-
-			return new UltimaBlock(options);
-		}
-
-		// force jQuery wrap
-		target = jQuery(target);
-
-		// re-use existing block
-		var i = 0, len = UltimaBlock.collection.length;
-		for (i; i < len; i++) {
-
-			if (target[0] === UltimaBlock.collection[i].target[0]) {
-
-				var overlay = UltimaBlock.collection[i];
-				overlay.options.current = overlay._.methods.mergeOptions(overlay.options.current, options);
-
-				return overlay;
+				throw new Error('jQuery missing for UltimaBlock');
 			}
-		}
 
-		// private scope
-		this._ = {};
+			// feature detection
+			if (!jQuery.isPlainObject) {
 
-		// closure reference
-		var self = this;
+				throw new Error('jQuery 1.4+ required for UltimaBlock');
+			}
 
-		// BEGIN: public properties
+		// END: check dependencies
 
-			this.target 	= target;
-			this.overlay 	= null;
-			this.message 	= null;
+		window.UltimaBlock = function(target, options) {
 
-			// BEGIN: options
+			// prevent skipping the constructor
+			if (!(this instanceof UltimaBlock)) {
 
-				this.options = {};
-				this.options.current = {};
+				return new UltimaBlock(options);
+			}
 
-				this.options['default'] = {
+			// force jQuery wrap
+			target = jQuery(target);
 
-					message: 			'',
+			// re-use existing block
+			var i = 0, len = UltimaBlock.collection.length;
+			for (i; i < len; i++) {
 
-					behavior: {
+				if (target[0] === UltimaBlock.collection[i].target[0]) {
 
-						// increment zIndex with each parallel overlay
-						zIndexInc: true
+					var overlay = UltimaBlock.collection[i];
+					overlay.options.current = overlay._.methods.mergeOptions(overlay.options.current, options);
 
-					},
+					return overlay;
+				}
+			}
 
-					css: {
+			// private scope
+			this._ = {};
 
-						overlay: {
+			// closure reference
+			var self = this;
 
-							// class added to the overlay element
-							className: 	'',
+			// BEGIN: public properties
 
-							// start z-index
-							zIndex: 	9001
+				this.target 	= target;
+				this.overlay 	= null;
+				this.message 	= null;
+
+				// BEGIN: options
+
+					this.options = {};
+					this.options.current = {};
+
+					this.options['default'] = {
+
+						message: 			'',
+
+						behavior: {
+
+							// increment zIndex with each parallel overlay
+							zIndexInc: true
 
 						},
 
-						message: {
+						css: {
 
-							// class added to the message element
-							className: 	'',
+							overlay: {
 
-							// positioning offset
-							offset: {
-								x: 0,
-								y: 0
+								// class added to the overlay element
+								className: 	'',
+
+								// start z-index
+								zIndex: 	9001
+
 							},
 
-							// viewport to base the positioning on
-							viewport: 	'auto',
+							message: {
 
-							// horizontal position of the message, either in px or in %
-							x: 			'50%',
+								// class added to the message element
+								className: 	'',
 
-							// vertical position of the message, either in px or in %
-							y: 			'50%'
+								// positioning offset
+								offset: {
+									x: 0,
+									y: 0
+								},
+
+								// viewport to base the positioning on
+								viewport: 	'auto',
+
+								// horizontal position of the message, either in px or in %
+								x: 			'50%',
+
+								// vertical position of the message, either in px or in %
+								y: 			'50%'
+
+							}
+
+						},
+
+						callbacks: {
+
+							// before blocking
+							onBlocking: 	undefined, // (UltimaBlock) 			: return false to interrupt
+
+							// before unblocking
+							onUnblocking: 	undefined  // (UltimaBlock) 			: return false to interrupt
 
 						}
 
-					},
+					};
 
-					callbacks: {
+				// END: options
 
-						// before blocking
-						onBlocking: 	undefined, // (UltimaBlock) 			: return false to interrupt
+			// END: public properties
 
-						// before unblocking
-						onUnblocking: 	undefined  // (UltimaBlock) 			: return false to interrupt
+			// BEGIN: private properties
 
+				this._.properties = {
+
+					classNames: {
+						overlay: 'UltimaBlock-overlay',
+						message: 'UltimaBlock-message'
 					}
 
 				};
 
-			// END: options
+			// END: private properties
 
-		// END: public properties
+			// BEGIN: public methods
 
-		// BEGIN: private properties
+				this.block = function(message) {
 
-			this._.properties = {
+					// callback: on blocking
+					if (jQuery.isFunction(this.options.current.callbacks.onBlocking)) {
 
-				classNames: {
-					overlay: 'UltimaBlock-overlay',
-					message: 'UltimaBlock-message'
-				}
+						if (this.options.current.callbacks.onBlocking(this) === false) {
 
-			};
+							return false;
+						}
+					}
 
-		// END: private properties
+					// BEGIN: create overlay
 
-		// BEGIN: public methods
+						if ( (this.overlay === null) || (!document.body.contains(this.overlay.dom.element[0])) ) {
 
-			this.block = function(message) {
+							// build overlay
+							this.overlay 	= this._.methods.createOverlay();
 
-				// callback: on blocking
-				if (jQuery.isFunction(this.options.current.callbacks.onBlocking)) {
+							// force relative positioning
+							this.target.css({
+								position: 'relative'
+							});
 
-					if (this.options.current.callbacks.onBlocking(this) === false) {
+							// append overlay to target
+							this.target.append(
+								this.overlay.dom.element
+							);
+						}
+
+					// END: create overlay
+
+					// BEGIN: create message
+
+						if ( (this.message === null) || (!document.body.contains(this.message.dom.outerElement[0])) ) {
+
+							// build message
+							this.message 	= this._.methods.createMessage();
+
+							// append message to overlay
+							this.overlay.dom.element.append(
+								this.message.dom.outerElement
+							);
+						}
+
+					// END: create message
+
+					this.message.set(message);
+
+					this.overlay.show();
+					this.message.show();
+				};
+
+				this.unblock = function() {
+
+					// callback: on unblocking
+					if (jQuery.isFunction(this.options.current.callbacks.onUnblocking)) {
+
+						if (this.options.current.callbacks.onUnblocking(this) === false) {
+
+							return false;
+						}
+					}
+
+					if (this.overlay === null) {
 
 						return false;
 					}
-				}
 
-				// BEGIN: create overlay
+					this.overlay.hide();
+				};
 
-					if ( (this.overlay === null) || (!document.body.contains(this.overlay.dom.element[0])) ) {
+			// END: public methods
 
-						// build overlay
-						this.overlay 	= this._.methods.createOverlay();
+			// BEGIN: private methods
 
-						// force relative positioning
-						this.target.css({
-							position: 'relative'
-						});
+				this._.methods = {
 
-						// append overlay to target
-						this.target.append(
-							this.overlay.dom.element
-						);
-					}
+					createOverlay: function() {
 
-				// END: create overlay
+						var overlay = {
 
-				// BEGIN: create message
+							// BEGIN: public properties
 
-					if ( (this.message === null) || (!document.body.contains(this.message.dom.outerElement[0])) ) {
+								dom: {
 
-						// build message
-						this.message 	= this._.methods.createMessage();
+									element: jQuery('<div></div>').hide()
 
-						// append message to overlay
-						this.overlay.dom.element.append(
-							this.message.dom.outerElement
-						);
-					}
+								},
 
-				// END: create message
+							// END: public properties
 
-				this.message.set(message);
+							// BEGIN: public methods
 
-				this.overlay.show();
-				this.message.show();
-			};
+								// hide overlay
+								hide: function() {
 
-			this.unblock = function() {
+									this.dom.element.hide();
+								},
 
-				// callback: on unblocking
-				if (jQuery.isFunction(this.options.current.callbacks.onUnblocking)) {
+								// show overlay
+								show: function() {
 
-					if (this.options.current.callbacks.onUnblocking(this) === false) {
+									this.dom.element.show();
 
-						return false;
-					}
-				}
+									// immediately reposition content
+									this._.methods.reposition();
+								},
 
-				if (this.overlay === null) {
+							// END: public methods
 
-					return false;
-				}
+							_: {
 
-				this.overlay.hide();
-			};
+								// BEGIN: private methods
 
-		// END: public methods
+									methods: {
 
-		// BEGIN: private methods
+										reposition: function() {
 
-			this._.methods = {
+											var overlayW, overlayH;
 
-				createOverlay: function() {
+											if (typeof self.options.current.css.message.viewport.width === 'number') {
 
-					var overlay = {
+												overlayW = self.options.current.css.message.viewport.width;
 
-						// BEGIN: public properties
+											} else {
 
-							dom: {
+												overlayW = self.overlay.dom.element.outerWidth();
+											}
 
-								element: jQuery('<div></div>').hide()
+											if (typeof self.options.current.css.message.viewport.height === 'number') {
 
-							},
+												overlayH = self.options.current.css.message.viewport.height;
 
-						// END: public properties
+											} else {
 
-						// BEGIN: public methods
+												overlayH = self.overlay.dom.element.outerHeight();
+											}
 
-							// hide overlay
-							hide: function() {
+											var messageW = self.message.dom.innerElement.width();
+											var messageH = self.message.dom.innerElement.height();
 
-								this.dom.element.hide();
-							},
+											var left, top;
 
-							// show overlay
-							show: function() {
+											// x
+											if (/^[0-9]{1,3}%$/.test(self.options.current.css.message.x)) {
 
-								this.dom.element.show();
+												left = (((self.options.current.css.message.x.replace('%', '') * overlayW) / 100) - (messageW / 2));
 
-								// immediately reposition content
-								this._.methods.reposition();
-							},
+											} else {
 
-						// END: public methods
+												left = self.options.current.css.message.x;
+											}
 
-						_: {
+											// y
+											if (/^[0-9]{1,3}%$/.test(self.options.current.css.message.y)) {
 
-							// BEGIN: private methods
+												top = (((self.options.current.css.message.y.replace('%', '') * overlayH) / 100) - (messageH / 2));
 
-								methods: {
+											} else {
 
-									reposition: function() {
+												top = self.options.current.css.message.y;
+											}
 
-										var overlayW, overlayH;
-
-										if (typeof self.options.current.css.message.viewport.width === 'number') {
-
-											overlayW = self.options.current.css.message.viewport.width;
-
-										} else {
-
-											overlayW = self.overlay.dom.element.outerWidth();
+											self.message.dom.innerElement.css({
+												left: 	(left + self.options.current.css.message.offset.x),
+												top: 	(top  + self.options.current.css.message.offset.y)
+											});
 										}
 
-										if (typeof self.options.current.css.message.viewport.height === 'number') {
-
-											overlayH = self.options.current.css.message.viewport.height;
-
-										} else {
-
-											overlayH = self.overlay.dom.element.outerHeight();
-										}
-
-										var messageW = self.message.dom.innerElement.width();
-										var messageH = self.message.dom.innerElement.height();
-
-										var left, top;
-
-										// x
-										if (/^[0-9]{1,3}%$/.test(self.options.current.css.message.x)) {
-
-											left = (((self.options.current.css.message.x.replace('%', '') * overlayW) / 100) - (messageW / 2));
-
-										} else {
-
-											left = self.options.current.css.message.x;
-										}
-
-										// y
-										if (/^[0-9]{1,3}%$/.test(self.options.current.css.message.y)) {
-
-											top = (((self.options.current.css.message.y.replace('%', '') * overlayH) / 100) - (messageH / 2));
-
-										} else {
-
-											top = self.options.current.css.message.y;
-										}
-
-										self.message.dom.innerElement.css({
-											left: 	(left + self.options.current.css.message.offset.x),
-											top: 	(top  + self.options.current.css.message.offset.y)
-										});
 									}
 
-								}
+								// END: private methods
 
-							// END: private methods
+							}
 
+						};
+
+						// BEGIN: build element
+
+							// BEGIN: appearance
+
+								// class
+								overlay.dom.element.addClass(self._.properties.classNames.overlay);
+								overlay.dom.element.addClass(self.options.current.css.overlay.className);
+
+								// BEGIN: inline CSS
+
+									var cssAttr = {};
+
+									if (!self.options.current.css.overlay.className) {
+
+										cssAttr.backgroundColor = 'rgba(0, 0, 0, 0.50)';
+									}
+
+									jQuery.extend(true, cssAttr, self.options.current.css.overlay);
+									jQuery.extend(true, cssAttr, {
+										bottom: 	0,
+										height: 	'100%',
+										left: 		0,
+										margin: 	0,
+										position: 	'absolute',
+										right: 		0,
+										top: 		0,
+										width: 		'100%',
+										zIndex: 	(self.options.current.css.overlay.zIndex + (self.options.current.behavior.zIndexInc ? UltimaBlock.collection.length : 0 ))
+									});
+
+									// style
+									overlay.dom.element.css(cssAttr);
+
+								// END: inline CSS
+
+							// END: appearance
+
+						// END: build element
+
+						return overlay;
+					},
+
+					createMessage: function() {
+
+						var message = {
+
+							// BEGIN: public properties
+
+								dom: {
+
+									outerElement: jQuery('<div></div>'),
+									innerElement: jQuery('<div></div>')
+
+								},
+
+							// END: public properties
+
+							// BEGIN: public methods
+
+								hide: function() {
+
+									this.dom.outerElement.hide();
+								},
+
+								set: function(content) {
+
+									this.dom.innerElement.html(
+										(content !== undefined) ? content : ''
+									);
+								},
+
+								show: function() {
+
+									this.dom.outerElement.show();
+								},
+
+							// END: public methods
+
+						};
+
+						// BEGIN: build element
+
+							// BEGIN: appearance
+
+								// class
+								message.dom.innerElement.addClass(self._.properties.classNames.message);
+								message.dom.innerElement.addClass(self.options.current.css.message.className);
+
+								// BEGIN: inline CSS
+
+									// force relative positioning
+									message.dom.outerElement.css({
+										height: 	'100%',
+										position: 	'relative',
+										width: 		'100%',
+									});
+
+									var cssAttr = {};
+
+									if (!self.options.current.css.message.className) {
+
+										cssAttr.color = '#FFFFFF';
+									}
+
+									jQuery.extend(true, cssAttr, self.options.current.css.message);
+									jQuery.extend(true, cssAttr, {
+										position: 'absolute'
+									});
+
+									// style
+									message.dom.innerElement.css(cssAttr);
+
+								// END: inline CSS
+
+							// END: appearance
+
+							// connect elements
+							message.dom.outerElement.append(
+								message.dom.innerElement
+							);
+
+						// END: build element
+
+						return message;
+					},
+
+					mergeOptions: function(options1, options2) {
+
+						self._.methods.translateOptions(options2);
+
+						var result = {};
+						jQuery.extend(true, result, options1);
+						jQuery.extend(true, result, options2);
+
+						return result;
+					},
+
+					translateOptions: function(options) {
+
+						var buffer, length, i, result, ref;
+
+						for (var key in options) {
+
+							if (!options.hasOwnProperty(key)) {
+
+								continue;
+							}
+
+							if (key.indexOf('->') !== 0) {
+
+								continue;
+							}
+
+							buffer = key.replace('->', '');
+							buffer = buffer.split('.');
+							length = buffer.length;
+
+							result = {};
+							ref = result;
+
+							for (i = 0; i < (length - 1); i++) {
+
+								ref[buffer[i]] = {};
+								ref = ref[buffer[i]];
+							}
+
+							ref[buffer[length - 1]] = options[key];
+
+							delete options[key];
+							jQuery.extend(true, options, result);
 						}
 
-					};
-
-					// BEGIN: build element
-
-						// BEGIN: appearance
-
-							// class
-							overlay.dom.element.addClass(self._.properties.classNames.overlay);
-							overlay.dom.element.addClass(self.options.current.css.overlay.className);
-
-							// BEGIN: inline CSS
-
-								var cssAttr = {};
-
-								if (!self.options.current.css.overlay.className) {
-
-									cssAttr.backgroundColor = 'rgba(0, 0, 0, 0.50)';
-								}
-
-								jQuery.extend(true, cssAttr, self.options.current.css.overlay);
-								jQuery.extend(true, cssAttr, {
-									bottom: 	0,
-									height: 	'100%',
-									left: 		0,
-									margin: 	0,
-									position: 	'absolute',
-									right: 		0,
-									top: 		0,
-									width: 		'100%',
-									zIndex: 	(self.options.current.css.overlay.zIndex + (self.options.current.behavior.zIndexInc ? UltimaBlock.collection.length : 0 ))
-								});
-
-								// style
-								overlay.dom.element.css(cssAttr);
-
-							// END: inline CSS
-
-						// END: appearance
-
-					// END: build element
-
-					return overlay;
-				},
-
-				createMessage: function() {
-
-					var message = {
-
-						// BEGIN: public properties
-
-							dom: {
-
-								outerElement: jQuery('<div></div>'),
-								innerElement: jQuery('<div></div>')
-
-							},
-
-						// END: public properties
-
-						// BEGIN: public methods
-
-							hide: function() {
-
-								this.dom.outerElement.hide();
-							},
-
-							set: function(content) {
-
-								this.dom.innerElement.html(content);
-							},
-
-							show: function() {
-
-								this.dom.outerElement.show();
-							},
-
-						// END: public methods
-
-					};
-
-					// BEGIN: build element
-
-						// BEGIN: appearance
-
-							// class
-							message.dom.innerElement.addClass(self._.properties.classNames.message);
-							message.dom.innerElement.addClass(self.options.current.css.message.className);
-
-							// BEGIN: inline CSS
-
-								// force relative positioning
-								message.dom.outerElement.css({
-									height: 	'100%',
-									position: 	'relative',
-									width: 		'100%',
-								});
-
-								var cssAttr = {};
-
-								if (!self.options.current.css.message.className) {
-
-									cssAttr.color = '#FFFFFF';
-								}
-
-								jQuery.extend(true, cssAttr, self.options.current.css.message);
-								jQuery.extend(true, cssAttr, {
-									position: 'absolute'
-								});
-
-								// style
-								message.dom.innerElement.css(cssAttr);
-
-							// END: inline CSS
-
-						// END: appearance
-
-						// connect elements
-						message.dom.outerElement.append(
-							message.dom.innerElement
-						);
-
-					// END: build element
-
-					return message;
-				},
-
-				mergeOptions: function(options1, options2) {
-
-					self._.methods.translateOptions(options2);
-
-					var result = {};
-					jQuery.extend(true, result, options1);
-					jQuery.extend(true, result, options2);
-
-					return result;
-				},
-
-				translateOptions: function(options) {
-
-					var buffer, length, i, result, ref;
-
-					for (var key in options) {
-
-						if (!options.hasOwnProperty(key)) {
-
-							continue;
-						}
-
-						if (key.indexOf('->') !== 0) {
-
-							continue;
-						}
-
-						buffer = key.replace('->', '');
-						buffer = buffer.split('.');
-						length = buffer.length;
-
-						result = {};
-						ref = result;
-
-						for (i = 0; i < (length - 1); i++) {
-
-							ref[buffer[i]] = {};
-							ref = ref[buffer[i]];
-						}
-
-						ref[buffer[length - 1]] = options[key];
-
-						delete options[key];
-						jQuery.extend(true, options, result);
+						return options;
 					}
 
-					return options;
-				}
+				};
 
+			// END: private methods
+
+			// BEGIN: constructor
+
+				// prepare options
+				this.options.current = this._.methods.mergeOptions(this.options['default'], UltimaBlock.options);
+				this.options.current = this._.methods.mergeOptions(this.options.current, options);
+
+			// END: constructor
+
+			// register as new block
+			UltimaBlock.collection.push(this);
+
+		};
+
+		// keep track of the active blocks
+		UltimaBlock.collection = [];
+
+		UltimaBlock.options = {};
+
+		// BEGIN: jQuery integration
+
+			// option defaults for all jQuery integrated calls
+			jQuery.UltimaBlock = {
+				options: {}
 			};
 
-		// END: private methods
+			jQuery.UltimaBlock.block = function(target, options) {
 
-		// BEGIN: constructor
+				var mergedOptions = {};
+				jQuery.extend(true, mergedOptions, jQuery.UltimaBlock.options);
+				jQuery.extend(true, mergedOptions, options);
 
-			// prepare options
-			this.options.current = this._.methods.mergeOptions(this.options['default'], UltimaBlock.options);
-			this.options.current = this._.methods.mergeOptions(this.options.current, options);
+				var overlay = new UltimaBlock(target, mergedOptions);
+				overlay.block();
 
-		// END: constructor
+				return overlay;
+			};
 
-		// register as new block
-		UltimaBlock.collection.push(this);
+			jQuery.UltimaBlock.unblock = function(target, options) {
 
-	};
+				var mergedOptions = {};
+				jQuery.extend(true, mergedOptions, jQuery.UltimaBlock.options);
+				jQuery.extend(true, mergedOptions, options);
 
-	// keep track of the active blocks
-	UltimaBlock.collection = [];
+				var overlay = new UltimaBlock(target, mergedOptions);
+				overlay.unblock();
 
-	UltimaBlock.options = {};
+				return overlay;
+			};
 
-	// BEGIN: jQuery integration
+			jQuery.fn.block = function(message, options) {
+				//            function(message)
+				//            function(options)
 
-		// option defaults for all jQuery integrated calls
-		jQuery.UltimaBlock = {
-			options: {}
-		};
+				if (options === undefined) {
 
-		jQuery.UltimaBlock.block = function(target, options) {
+					// options
+					if (typeof message !== 'string') {
 
-			var mergedOptions = {};
-			jQuery.extend(true, mergedOptions, jQuery.UltimaBlock.options);
-			jQuery.extend(true, mergedOptions, options);
-
-			var overlay = new UltimaBlock(target, mergedOptions);
-			overlay.block();
-
-			return overlay;
-		};
-
-		jQuery.UltimaBlock.unblock = function(target, options) {
-
-			var mergedOptions = {};
-			jQuery.extend(true, mergedOptions, jQuery.UltimaBlock.options);
-			jQuery.extend(true, mergedOptions, options);
-
-			var overlay = new UltimaBlock(target, mergedOptions);
-			overlay.unblock();
-
-			return overlay;
-		};
-
-		jQuery.fn.block = function(message, options) {
-			//            function(message)
-			//            function(options)
-
-			if (options === undefined) {
-
-				// options
-				if (typeof message !== 'string') {
-
-					options = message;
+						options = message;
+					}
 				}
-			}
 
-			var mergedOptions = {};
-			jQuery.extend(true, mergedOptions, jQuery.UltimaBlock.options);
-			jQuery.extend(true, mergedOptions, options);
+				var mergedOptions = {};
+				jQuery.extend(true, mergedOptions, jQuery.UltimaBlock.options);
+				jQuery.extend(true, mergedOptions, options);
 
-			this.each(function() {
+				this.each(function() {
 
-				new UltimaBlock(this, mergedOptions).block(message);
-			});
+					new UltimaBlock(this, mergedOptions).block(message);
+				});
 
-			return this;
-		};
+				return this;
+			};
 
-		jQuery.fn.unblock = function(options) {
+			jQuery.fn.unblock = function(options) {
 
-			var mergedOptions = {};
-			jQuery.extend(true, mergedOptions, jQuery.UltimaBlock.options);
-			jQuery.extend(true, mergedOptions, options);
+				var mergedOptions = {};
+				jQuery.extend(true, mergedOptions, jQuery.UltimaBlock.options);
+				jQuery.extend(true, mergedOptions, options);
 
-			this.each(function() {
+				this.each(function() {
 
-				new UltimaBlock(this, mergedOptions).unblock();
-			});
+					new UltimaBlock(this, mergedOptions).unblock();
+				});
 
-			return this;
-		};
+				return this;
+			};
 
-	// END: jQuery integration
+		// END: jQuery integration
 
-	UltimaBlock.version = '0.3.5';
-}
+		UltimaBlock.version = '0.3.6';
+	}
+
+}());
